@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs';
 import { createServer, type AddressInfo, type Socket } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -259,6 +259,22 @@ describe('project chat retention', () => {
     open('beta');
     expect(manager.snapshot()).toEqual(beta);
     expect(chats.load(alpha.id)?.transcript[0]).toMatchObject({ text: 'Alpha task' });
+  });
+
+  it('closing the active project through a linked path tears down the session instead of orphaning it', async () => {
+    open('alpha');
+    await manager.send({ text: 'Alpha task' });
+    // A linked spelling of the same folder, like macOS /var vs /private/var. The project:close and
+    // project:remove handlers resolve it to the stored path before closing, same as below.
+    const linked = join(root, 'link-alpha');
+    symlinkSync(join(root, 'alpha'), linked, 'junction');
+    const stored = projects.get(linked)?.path ?? linked;
+    expect(stored).toBe(join(root, 'alpha'));
+    manager.closeProject(stored);
+    projects.close(stored);
+    manager.projectChanged();
+    expect(manager.snapshot().projectPath).toBeNull();
+    expect(projects.current()).toBeNull();
   });
 
   it('closing an inactive project does not alter the active chat and history can reopen it', async () => {

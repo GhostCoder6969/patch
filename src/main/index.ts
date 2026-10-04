@@ -255,8 +255,9 @@ function start(): void {
   handle('project:opened', () => projects.opened());
   handle('project:close', (path) => {
     manager.requireIdle();
-    manager.closeProject(path);
-    projects.close(path);
+    const stored = projects.get(path)?.path ?? path;
+    manager.closeProject(stored);
+    projects.close(stored);
     manager.projectChanged();
     terminal.stop();
     send(mainWindow, 'project:changed', projects.current());
@@ -268,8 +269,9 @@ function start(): void {
   });
   handle('project:remove', (path) => {
     manager.requireIdle();
-    manager.closeProject(path);
-    projects.remove(path);
+    const stored = projects.get(path)?.path ?? path;
+    manager.closeProject(stored);
+    projects.remove(stored);
     manager.projectChanged();
     terminal.stop();
     send(mainWindow, 'project:changed', projects.current());
